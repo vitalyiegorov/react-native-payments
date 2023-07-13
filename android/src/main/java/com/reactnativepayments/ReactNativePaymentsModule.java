@@ -94,38 +94,48 @@ public class ReactNativePaymentsModule extends ReactContextBaseJavaModule {
                                 paymentDetails.putMap("cardInfo", cardInfo);
 
                                 String serializedPaymentToken = paymentData.getPaymentMethodToken().getToken();
+                                Log.i(REACT_CLASS, "serializedPaymentToken" + serializedPaymentToken);
+
                                 try {
                                     JSONObject paymentTokenJson = new JSONObject(serializedPaymentToken);
                                     String protocolVersion = paymentTokenJson.getString("protocolVersion");
                                     String signature = paymentTokenJson.getString("signature");
-                                    String signedMessage = paymentTokenJson.getString("signedMessage");
 
-                                    String serializeIntermediateSigningKey = paymentTokenJson.getString("intermediateSigningKey");
+                                    // Parsing signedMessage
+                                    JSONObject signedMessage = new JSONObject(paymentTokenJson.getString("signedMessage"));
+                                    String ephemeralPublicKey = signedMessage.getString("ephemeralPublicKey");
+                                    String encryptedMessage = signedMessage.getString("encryptedMessage");
+                                    String tag = signedMessage.getString("tag");
 
                                     WritableNativeMap paymentToken = new WritableNativeMap();
-
-                                    JSONObject intermediateSigningKeyJson = new JSONObject(serializeIntermediateSigningKey);
-                                    WritableNativeMap intermediateSigningKey = new WritableNativeMap();
-
-                                    String signedKey = intermediateSigningKeyJson.getString("signedKey");
-                                    JSONArray signatures = intermediateSigningKeyJson.getJSONArray("signatures");
-                                    WritableNativeArray signaturesArray = new WritableNativeArray();
-
-                                    intermediateSigningKey.putString("signedKey", signedKey);
-
-                                    for (int i = 0; i < signatures.length(); i++) {
-                                        signaturesArray.pushString(signatures.getString(i));
-                                    }
-
-                                    intermediateSigningKey.putArray("signatures", signaturesArray);
-
                                     paymentToken.putString("protocolVersion", protocolVersion);
                                     paymentToken.putString("signature", signature);
-                                    paymentToken.putString("signedMessage", signedMessage);
-                                    paymentToken.putMap("intermediateSigningKey", intermediateSigningKey);
+                                    paymentToken.putString("ephemeralPublicKey", ephemeralPublicKey);
+                                    paymentToken.putString("encryptedMessage", encryptedMessage);
+                                    paymentToken.putString("tag", tag);
+
+                                    // Parsing intermediateSigningKey, not always returned
+                                    try {
+                                        JSONObject intermediateSigningKeyJson = new JSONObject(paymentTokenJson.getString("intermediateSigningKey"));
+                                        String signedKey = intermediateSigningKeyJson.getString("signedKey");
+                                        JSONArray signatures = intermediateSigningKeyJson.getJSONArray("signatures");
+
+                                        WritableNativeArray signaturesArray = new WritableNativeArray();
+                                        for (int i = 0; i < signatures.length(); i++) {
+                                            signaturesArray.pushString(signatures.getString(i));
+                                        }
+
+                                        WritableNativeMap intermediateSigningKey = new WritableNativeMap();
+                                        intermediateSigningKey.putString("signedKey", signedKey);
+                                        intermediateSigningKey.putArray("signatures", signaturesArray);
+
+                                        paymentToken.putMap("intermediateSigningKey", intermediateSigningKey);
+                                    } catch(JSONException e) {
+                                        Log.i(REACT_CLASS, "ANDROID PAY No intermediateSigningKey available", e);
+                                        // TODO: Should we return empty intermediateSigningKey?
+                                    }
 
                                     paymentDetails.putMap("paymentToken", paymentToken);
-
 
                                     sendEvent(reactContext, "NativePayments:onuseraccept", paymentDetails);
 
@@ -293,10 +303,11 @@ public class ReactNativePaymentsModule extends ReactContextBaseJavaModule {
 
         if (tokenizationType.equals("PAYMENT_METHOD_TOKENIZATION_TYPE_PAYMENT_GATEWAY")) {
             ReadableMap parameters = tokenizationParameters.getMap("parameters");
+
+            // https://developers.google.com/android/reference/com/google/android/gms/wallet/PaymentMethodTokenizationParameters
             PaymentMethodTokenizationParameters.Builder parametersBuilder = PaymentMethodTokenizationParameters.newBuilder()
                     .setPaymentMethodTokenizationType(WalletConstants.PAYMENT_METHOD_TOKENIZATION_TYPE_PAYMENT_GATEWAY)
-                    .addParameter("gateway", parameters.getString("gateway"))
-                    .addParameter("gatewayMerchantId", , parameters.getString("gatewayMerchantId"));
+                    .addParameter("gateway", parameters.getString("gateway"));
 
             ReadableMapKeySetIterator iterator = parameters.keySetIterator();
 
