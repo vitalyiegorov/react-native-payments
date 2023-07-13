@@ -307,7 +307,8 @@ public class ReactNativePaymentsModule extends ReactContextBaseJavaModule {
             // https://developers.google.com/android/reference/com/google/android/gms/wallet/PaymentMethodTokenizationParameters
             PaymentMethodTokenizationParameters.Builder parametersBuilder = PaymentMethodTokenizationParameters.newBuilder()
                     .setPaymentMethodTokenizationType(WalletConstants.PAYMENT_METHOD_TOKENIZATION_TYPE_PAYMENT_GATEWAY)
-                    .addParameter("gateway", parameters.getString("gateway"));
+                    .addParameter("gateway", parameters.getString("gateway"))
+                    .addParameter("gatewayMerchantId", parameters.getString("gatewayMerchantId"));
 
             ReadableMapKeySetIterator iterator = parameters.keySetIterator();
 
